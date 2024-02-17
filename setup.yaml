@@ -1,0 +1,155 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  BucketName1:
+    Type: String
+    Description: Name of the S3 bucket to be used to store lambda function zip file
+Resources:
+  BucketName2:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: api-football-storage
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldObjects
+            Status: Enabled
+            ExpirationInDays: 3
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "lambdaLogs" 
+      RetentionInDays: 3
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "apiLogs" 
+      RetentionInDays: 3
+  ApiMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterName: "ApiMonitor" # Name of your filter
+      LogGroupName: !Ref ApiLogGroup
+      FilterPattern: "%[45][0-9]{2}%" # Define your filter pattern
+      MetricTransformations:
+        - MetricName: "Error" # Name of your metric
+          MetricNamespace: "ApiMetrics" # Namespace for your metric
+          MetricValue: "1" # Metric value
+          Unit: "Count" # Unit of the metric
+  # ApiAlarm:
+  #   Type: AWS::CloudWatch::Alarm
+  #   Properties:
+  #     AlarmName: "ApiErrorAlarm"
+  #     AlarmDescription: "Alarm for api Metric Filter"
+  #     Namespace: !Ref ApiMetricFilter
+  #     MetricName: !Ref ApiMetricFilter
+  #     Dimensions:
+  #       - Name: LogGroupName
+  #         Value: !Ref ApiLogGroup
+  #       # - Name: DimensionName  # Add the same dimension used in the Metric Filter
+  #       #   Value: Metrics        # Add the same value used in the Metric Filter
+  #     EvaluationPeriods: 1
+  #     Statistic: Sum
+  #     ComparisonOperator: GreaterThanOrEqualToThreshold
+  #     Threshold: 1
+  #     Period: 30 # in seconds
+  #     AlarmActions:
+  #       - "arn:aws:sns:us-east-1:293449056871:Default_CloudWatch_Alarms_Topic" # Replace with your SNS topic ARN
+  #     TreatMissingData: missing
+  MyLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:lambdaLogs:*'
+        - PolicyName: useS3Bucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                Resource: !Sub 'arn:aws:s3:::${BucketName1}/*'
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                Resource: !Sub 'arn:aws:s3:::${BucketName2}/*'
+  MyLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: footballApp
+      Role: !GetAtt MyLambdaRole.Arn
+      Runtime: python3.11
+      Handler: lambda.lambda_handler
+      Code:
+        S3Bucket: !Ref BucketName1
+        S3Key: lambda.zip
+      MemorySize: 256  # Adjust based on your requirements
+      Timeout: 29      # Adjust based on your requirements
+      Tags:
+        - Key: Name
+          Value: YourFunctionName
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MyLambdaFunction
+      Action: "lambda:InvokeFunction"
+      Principal: apigateway.amazonaws.com
+  ApiGateway:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: Demo API Gateway
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref ApiGateway
+      StageName: dev
+      Description: Dev Stage
+      AutoDeploy: true
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiLogGroup.Arn
+        Format: '$context.identity.sourceIp - - [$context.requestTime] "$context.httpMethod $context.routeKey $context.protocol" $context.status $context.responseLength $context.requestId'
+  LambdaIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref ApiGateway
+      Description: Lambda proxy integration
+      IntegrationType: AWS_PROXY
+      IntegrationMethod: GET
+      PayloadFormatVersion: "2.0"
+      # IntegrationUri: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${MyLambdaFunction}'
+      IntegrationUri: !GetAtt MyLambdaFunction.Arn
+  ApiRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ApiGateway
+      RouteKey: "GET /football"
+      # AuthorizationType: AWS_IAM
+      Target: !Join
+        - /
+        - - integrations
+          - !Ref LambdaIntegration
+ 

@@ -1,0 +1,16 @@
+  ApiAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: "ApiErrorAlarm"
+      AlarmDescription: "Alarm for api Metric Filter"
+      Namespace: !Ref ApiMetricFilter
+      MetricName: !Ref ApiMetricFilter
+      Dimensions:
+        - Name: LogGroupName
+          Value: !Ref ApiLogGroup
+      EvaluationPeriods: 1
+      Statistic: Sum
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 1
+      Period: 30 # in seconds
+      TreatMissingData: missing

@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&family=Roboto:wght@300;500&display=swap');
+
+
+html {
+    box-sizing: border-box;
+    font-family: "Karla";
+    font-size: 16px;
+    font-weight: 400;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+
+
+body{
+    background-color: #03001C !important;
+
+}
+
+.main{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+    column-gap: 20px;
+}
+
+.selection{
+    display: flex;
+    flex-direction: column;
+    row-gap: 30px;
+    margin: 0 10px;
+}
+
+
+.dropdown-menu1{
+    height: 300px;
+    overflow: auto;
+    
+}
+
+.dropdown-item{
+    text-align: center!important;
+}
+
+.dropdown-item:hover{
+    text-align: center!important;
+    cursor: pointer;
+}
+
+
+.chartBox {
+    flex-grow: 1;
+    height: 90%;
+    border-radius: 20px;
+    border: solid 3px rgba(54, 162, 235, 1);
+    background: white;
+}
+
+.hidden{
+    display: none!important;
+}
