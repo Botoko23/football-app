@@ -1,5 +1,5 @@
 # Football Racing Barchart App
-This project is an end-to-end implemntation of building a serverless archittecure to build an backend api pf football data for frontend web client.
+This project is an end-to-end implemntation of building a serverless archittecure to build an backend api of football data for frontend web client.
 ## 📝 Table of Contents
 - [System Architecture](#system-architecture)
 - [Setup & Requirements](#-setup--requirements)
